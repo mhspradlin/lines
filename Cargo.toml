@@ -6,3 +6,4 @@ authors = ["Mitch Spradlin <mitch@spradlin.net>"]
 [dependencies]
 log = "0.4.1"
 log4rs = "0.8.0"
+rayon = "1.0.0"
