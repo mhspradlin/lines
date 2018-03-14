@@ -2,13 +2,16 @@
 extern crate log4rs;
 extern crate rayon;
 extern crate statsd;
+extern crate cadence;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use rayon::prelude::*;
 use rayon::ThreadPool;
 use std::thread;
-use statsd::client::{Client, Pipeline};
 use std::f64;
+use std::net::UdpSocket;
+use cadence::prelude::*;
+use cadence::{StatsdClient, QueuingMetricSink, BufferedUdpMetricSink,
+              DEFAULT_PORT};
 
 static START_TIME: SystemTime = UNIX_EPOCH;
 static PERIOD: Duration = Duration::from_secs(5 * 60);
@@ -17,10 +20,7 @@ fn main() {
     log4rs::init_file("config/log4rs.yml", Default::default()).unwrap();
     info!("Starting up");
 
-    let statsd_url = "stats.home:8125";
-    let hostname = "cronus";
-    let mut statsd_client = Client::new(statsd_url, hostname).unwrap();
-
+    let mut statsd_client = make_statsd_client("stats.home", DEFAULT_PORT, "cronus");
     let update_interval = Duration::from_secs(60);
     let num_sensors = 4;
 
@@ -35,27 +35,40 @@ fn main() {
     }
 }
 
-trait Sensor {
-    fn sense(&self, stats_pipeline: &mut Pipeline);
+fn make_statsd_client(host: &str, port: u16, metrics_prefix: &str) -> StatsdClient {
+    let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+    socket.set_nonblocking(true).unwrap();
+    let host = (host, port);
+    let udp_sink = BufferedUdpMetricSink::from(&host, socket).unwrap();
+    let queuing_sink = QueuingMetricSink::from(udp_sink);
+    StatsdClient::from_sink(metrics_prefix, queuing_sink)
 }
 
-struct DummySensor(String, f64);
+trait Sensor {
+    fn sense(&self, stats_pipeline: &StatsdClient);
+}
+
+struct DummySensor(String, u64);
 
 impl Sensor for DummySensor {
-    fn sense(&self, pipeline: &mut Pipeline) {
-        info!("Sense called for Sensor {}", self.0);
+    fn sense(&self, statsd_client: &StatsdClient) {
         let now = SystemTime::now();
         let place_in_interval = (now.duration_since(START_TIME).unwrap().as_secs() % PERIOD.as_secs()) as f64 / PERIOD.as_secs() as f64;
         let sin_parameter = place_in_interval / (f64::consts::PI / 2.0);
         let metric_name = "test.".to_string() + &self.0;
-        pipeline.count(&metric_name, self.1 * f64::sin(sin_parameter));
+        let curr_value = self.1 + (self.1 as f64 * f64::sin(sin_parameter)).round() as u64;
+        info!("Sense called for Sensor {}, emitting value {}", self.0, curr_value);
+        if let Err(e) = statsd_client.gauge(&metric_name, curr_value) {
+            error!("Encountered and ignoring error sending stats for metric name {} and value {}: {:?}",
+                   &metric_name, curr_value, e);
+        }
     }
 }
 
 fn make_dummy_sensors(number: u8) -> Vec<DummySensor> {
     let mut dummy_sensors = Vec::new();
     for index in 0..number {
-        dummy_sensors.push(DummySensor("Sensor ".to_string() + &index.to_string(), index as f64));
+        dummy_sensors.push(DummySensor("Sensor ".to_string() + &index.to_string(), (index as u64 + 1) * 1000));
     }
     return dummy_sensors;
 }
@@ -69,11 +82,9 @@ fn make_sensor_thread_pool(num_sensors: usize) -> ThreadPool {
 }
 
 fn run_all_sensors_in_parallel(_sensor_pool: &ThreadPool, sensors: &Vec<DummySensor>,
-                               statsd_client: &mut Client) {
-    let mut pipeline = statsd_client.pipeline();
+                               statsd_client: &StatsdClient) {
     for sensor in sensors {
-        sensor.sense(&mut pipeline);
-        pipeline.send(statsd_client);
+        sensor.sense(statsd_client);
     }
 }
 
