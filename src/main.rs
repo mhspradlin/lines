@@ -14,7 +14,7 @@ use cadence::{StatsdClient, QueuingMetricSink, BufferedUdpMetricSink,
               DEFAULT_PORT};
 
 static START_TIME: SystemTime = UNIX_EPOCH;
-static PERIOD: Duration = Duration::from_secs(5 * 60);
+static PERIOD: Duration = Duration::from_secs(30 * 60);
 
 fn main() {
     log4rs::init_file("config/log4rs.yml", Default::default()).unwrap();
@@ -58,7 +58,7 @@ impl Sensor for DummySensor {
         let metric_name = "test.".to_string() + &self.0;
         let curr_value = self.1 + (self.1 as f64 * f64::sin(sin_parameter)).round() as u64;
         info!("Sense called for Sensor {}, emitting value {}", self.0, curr_value);
-        if let Err(e) = statsd_client.gauge(&metric_name, curr_value) {
+        if let Err(e) = statsd_client.count(&metric_name, curr_value as i64) {
             error!("Encountered and ignoring error sending stats for metric name {} and value {}: {:?}",
                    &metric_name, curr_value, e);
         }
