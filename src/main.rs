@@ -54,7 +54,7 @@ impl Sensor for DummySensor {
     fn sense(&self, statsd_client: &StatsdClient) {
         let now = SystemTime::now();
         let place_in_interval = (now.duration_since(START_TIME).unwrap().as_secs() % PERIOD.as_secs()) as f64 / PERIOD.as_secs() as f64;
-        let sin_parameter = place_in_interval / (f64::consts::PI / 2.0);
+        let sin_parameter = place_in_interval * f64::consts::PI * 2.0;
         let metric_name = "test.".to_string() + &self.0;
         let curr_value = self.1 + (self.1 as f64 * f64::sin(sin_parameter)).round() as u64;
         info!("Sense called for Sensor {}, emitting value {}", self.0, curr_value);
