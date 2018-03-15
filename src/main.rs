@@ -10,7 +10,7 @@ use std::thread;
 use std::f64;
 use std::net::UdpSocket;
 use cadence::prelude::*;
-use cadence::{StatsdClient, QueuingMetricSink, BufferedUdpMetricSink,
+use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
               DEFAULT_PORT};
 
 static START_TIME: SystemTime = UNIX_EPOCH;
@@ -39,7 +39,8 @@ fn make_statsd_client(host: &str, port: u16, metrics_prefix: &str) -> StatsdClie
     let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
     socket.set_nonblocking(true).unwrap();
     let host = (host, port);
-    let udp_sink = BufferedUdpMetricSink::from(&host, socket).unwrap();
+    // Use an unbuffered UdpMetricsSink because we only occasionally emit metrics
+    let udp_sink = UdpMetricSink::from(&host, socket).unwrap();
     let queuing_sink = QueuingMetricSink::from(udp_sink);
     StatsdClient::from_sink(metrics_prefix, queuing_sink)
 }
