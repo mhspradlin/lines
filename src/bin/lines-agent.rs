@@ -8,29 +8,31 @@ extern crate lines;
 // Good example for multiplatform code: https://github.com/luser/read-process-memory/blob/master/src/lib.rs
 
 use std::time::{Duration, SystemTime};
+use rayon::prelude::*;
 use rayon::ThreadPool;
 use std::thread;
 use std::net::UdpSocket;
 use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
               DEFAULT_PORT};
-use lines::{Sensor, DummySensor, DiskUsageSensor};
+use lines::Sensor;
+use lines::sensors::DiskSpaceSensor;
+use std::ffi::OsString;
 
 fn main() {
     log4rs::init_file("config/log4rs.yml", Default::default()).unwrap();
     info!("Starting up");
 
-    let mut statsd_client = make_statsd_client("stats.home", DEFAULT_PORT, "cronus");
+    let statsd_client = make_statsd_client("stats.home", DEFAULT_PORT, "cronus");
     let update_interval = Duration::from_secs(60);
-    let num_sensors = 4;
 
-    let sensor_pool = make_sensor_thread_pool(num_sensors as usize);
-    //let sensors = make_dummy_sensors(num_sensors);
     let mut sensors = Vec::new();
-    sensors.push(lines::make_sensor());
+    sensors.push(DiskSpaceSensor::new(OsString::from(r"C:\")));
+    let num_sensors = sensors.len();
+    let sensor_pool = make_sensor_thread_pool(num_sensors as usize);
     let mut last_update = SystemTime::now();
     loop {
         debug!("Running all sensors in parallel");
-        run_all_sensors_in_parallel(&sensor_pool, &sensors, &mut statsd_client);
+        run_all_sensors_in_parallel(&sensor_pool, &sensors, &statsd_client);
         sleep_until_target_time(last_update, update_interval);
         last_update = SystemTime::now();
     }
@@ -54,11 +56,12 @@ fn make_sensor_thread_pool(num_sensors: usize) -> ThreadPool {
                         .unwrap()
 }
 
-fn run_all_sensors_in_parallel<T>(_sensor_pool: &ThreadPool, sensors: &Vec<T>,
-                               statsd_client: &StatsdClient) where T:Sensor {
-    for sensor in sensors {
-        sensor.sense(statsd_client);
-    }
+fn run_all_sensors_in_parallel<T>(sensor_pool: &ThreadPool, sensors: &Vec<T>,
+                                  statsd_client: &StatsdClient)
+    where T: Sensor + Sync {
+        sensor_pool.install(|| 
+            sensors.par_iter()
+                   .for_each(|ref sensor| sensor.sense(statsd_client)))
 }
 
 fn sleep_until_target_time(last_wakeup: SystemTime, target_interval: Duration) {
