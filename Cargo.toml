@@ -14,3 +14,6 @@ lazy_static = "1.0"
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.4"
 kernel32-sys = { version = "0.2.2", features = [] }
+
+[target.'cfg(target_os="linux")'.dependencies]
+libc = "0.2.39"
