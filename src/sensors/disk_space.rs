@@ -88,25 +88,51 @@ mod platform {
     use cadence::StatsdClient;
     use std::mem;
     use std::io::Error;
+    use std::i64;
 
     // I think we should use this call: https://docs.rs/libc/0.2.39/libc/fn.statfs64.html
     // Actually, use statvfs64
 
     const FALSE: i32 = 0;
+    const FATAL_ERROR: &'static str = "Fatal error counting metric";
+    const METRICS_PREFIX: &'static str = "drive";
+    lazy_static! {
+        static ref TOTAL_BYTES: String = METRICS_PREFIX.to_string() + ".total_bytes";
+        static ref FREE_BYTES: String = METRICS_PREFIX.to_string() + ".free_bytes";
+    }
 
     impl Sensor for DiskSpaceSensor {
         fn sense(&self, statsd_client: &StatsdClient) {
-            let dir_on_drive: *const c_char = CString::new(self.directory_on_disk.as_bytes()).unwrap().as_ptr();
+            let dir_on_drive = CString::new(self.directory_on_disk.as_bytes()).unwrap();
             let mut info_struct: statvfs64 = unsafe { mem::zeroed() };
             let return_code: i32 = unsafe {
-                libc::statvfs64(dir_on_drive, &mut info_struct)
+                libc::statvfs64(dir_on_drive.as_ptr(), &mut info_struct)
             };
+            let total_accessible_drive_size_bytes = info_struct.f_frsize * info_struct.f_blocks;
+            let total_free_drive_space_bytes = info_struct.f_bsize * info_struct.f_bfree;
             if return_code == FALSE {
-                info!("Success, got {}", info_struct.f_blocks);
+                info!("'{}' total size: {} GiB", self.directory_on_disk.to_string_lossy(),
+                      total_accessible_drive_size_bytes / 1024 / 1024 / 1024);
+                info!("'{}' free size: {} GiB", self.directory_on_disk.to_string_lossy(),
+                      total_free_drive_space_bytes / 1024 / 1024 / 1024);
+                statsd_client.count(&TOTAL_BYTES, value_or_max(total_accessible_drive_size_bytes))
+                    .expect(FATAL_ERROR);
+                statsd_client.count(&FREE_BYTES, value_or_max(total_free_drive_space_bytes))
+                    .expect(FATAL_ERROR);
             } else {
                 error!("Error getting drive usage for drive '{}': {}",
                        self.directory_on_disk.to_string_lossy(), Error::last_os_error());
             }
+        }
+    }
+
+    fn value_or_max(value: u64) -> i64 {
+        if value >= i64::MAX as u64 {
+            warn!("Value {} larger than max value of {}, reporting max value {} instead",
+                   value, i64::MAX, i64::MAX);
+            i64::MAX
+        } else {
+            value as i64
         }
     }
 }

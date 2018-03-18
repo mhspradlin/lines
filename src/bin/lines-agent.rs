@@ -16,7 +16,7 @@ use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
               DEFAULT_PORT};
 use lines::Sensor;
 use lines::sensors::DiskSpaceSensor;
-use std::ffi::OsString;
+use std::env;
 
 fn main() {
     log4rs::init_file("config/log4rs.yml", Default::default()).unwrap();
@@ -25,8 +25,10 @@ fn main() {
     let statsd_client = make_statsd_client("stats.home", DEFAULT_PORT, "cronus");
     let update_interval = Duration::from_secs(60);
 
+    let home_dir = env::home_dir().expect("Can't find home directory");
+
     let mut sensors = Vec::new();
-    sensors.push(DiskSpaceSensor::new(OsString::from(r"C:\")));
+    sensors.push(DiskSpaceSensor::new(home_dir.into_os_string()));
     let num_sensors = sensors.len();
     let sensor_pool = make_sensor_thread_pool(num_sensors as usize);
     let mut last_update = SystemTime::now();
