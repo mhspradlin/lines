@@ -84,6 +84,7 @@ mod platform {
     use self::libc::statvfs64;
     use cadence::prelude::*;
     use cadence::StatsdClient;
+    use std::mem;
 
     // I think we should use this call: https://docs.rs/libc/0.2.39/libc/fn.statfs64.html
     // Actually, use statvfs64
@@ -93,10 +94,9 @@ mod platform {
     impl Sensor for DiskSpaceSensor {
         fn sense(&self, statsd_client: &StatsdClient) {
             let dir_on_drive: *const c_char = self.directory_on_disk.as_bytes();
-            let mut info_struct: statvfs64 =
-                statvfs64 {};
+            let mut info_struct: statvfs64 = unsafe { mem::zeroed() };
             let return_code: i32 = unsafe {
-                libc::statvfs64(dir_on_drive, &mut statvfs64)
+                libc::statvfs64(dir_on_drive, &mut info_struct)
             };
             if return_code == FALSE {
                 info!("Success, got {}", info_struct.f_blocks);
