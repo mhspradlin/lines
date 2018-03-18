@@ -1,6 +1,7 @@
 extern crate cadence;
 
 use super::Sensor;
+use std::i64;
 
 pub struct PhysicalMemorySensor {
 }
@@ -41,8 +42,25 @@ mod platform {
             if return_code == FALSE {
                 error!("Error getting physical memory usage: {}", Error::last_os_error());
             } else {
-                info!("Got physical memory usage: {}", info_struct.ullTotalPhys);
+                let total_accessible_bytes = info_struct.ullTotalPhys;
+                let total_free_bytes = info_struct.ullAvailPhys;
+                info!("Total accessible physical memory: {} MiB", total_accessible_bytes / 1024 / 1024);
+                info!("Total free physical memory: {} MiB", total_free_bytes / 1024 / 1024);
+                statsd_client.count(&TOTAL_BYTES, super::value_or_max(total_accessible_bytes))
+                    .expect(FATAL_ERROR);
+                statsd_client.count(&FREE_BYTES, super::value_or_max(total_free_bytes))
+                    .expect(FATAL_ERROR);
             }
         }
+    }
+}
+
+fn value_or_max(value: u64) -> i64 {
+    if value >= i64::MAX as u64 {
+        warn!("Value {} larger than max value of {}, reporting max value {} instead",
+                value, i64::MAX, i64::MAX);
+        i64::MAX
+    } else {
+        value as i64
     }
 }
