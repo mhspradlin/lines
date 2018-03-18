@@ -81,7 +81,9 @@ mod platform {
 
     use super::{Sensor, DiskSpaceSensor};
     use std::os::unix::prelude::*;
-    use libc::statvfs64;
+    use self::libc::statvfs64;
+    use cadence::prelude::*;
+    use cadence::StatsdClient;
 
     // I think we should use this call: https://docs.rs/libc/0.2.39/libc/fn.statfs64.html
     // Actually, use statvfs64
