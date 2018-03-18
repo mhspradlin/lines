@@ -94,7 +94,7 @@ mod platform {
 
     impl Sensor for DiskSpaceSensor {
         fn sense(&self, statsd_client: &StatsdClient) {
-            let dir_on_drive: *const c_char = self.directory_on_disk.as_bytes();
+            let dir_on_drive: *const c_char = self.directory_on_disk.as_bytes().as_ptr();
             let mut info_struct: statvfs64 = unsafe { mem::zeroed() };
             let return_code: i32 = unsafe {
                 libc::statvfs64(dir_on_drive, &mut info_struct)
