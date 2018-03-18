@@ -87,6 +87,7 @@ mod platform {
     use cadence::prelude::*;
     use cadence::StatsdClient;
     use std::mem;
+    use std::io::Error;
 
     // I think we should use this call: https://docs.rs/libc/0.2.39/libc/fn.statfs64.html
     // Actually, use statvfs64
