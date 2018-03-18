@@ -15,7 +15,7 @@ use std::net::UdpSocket;
 use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
               DEFAULT_PORT};
 use lines::Sensor;
-use lines::sensors::DiskSpaceSensor;
+use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor};
 use std::env;
 
 fn main() {
@@ -28,7 +28,8 @@ fn main() {
     let home_dir = env::home_dir().expect("Can't find home directory");
 
     let mut sensors = Vec::new();
-    sensors.push(DiskSpaceSensor::new(home_dir.into_os_string()));
+    //sensors.push(Box::new(DiskSpaceSensor::new(home_dir.into_os_string())));
+    sensors.push(PhysicalMemorySensor::new());
     let num_sensors = sensors.len();
     let sensor_pool = make_sensor_thread_pool(num_sensors as usize);
     let mut last_update = SystemTime::now();
@@ -60,10 +61,14 @@ fn make_sensor_thread_pool(num_sensors: usize) -> ThreadPool {
 
 fn run_all_sensors_in_parallel<T>(sensor_pool: &ThreadPool, sensors: &Vec<T>,
                                   statsd_client: &StatsdClient)
-    where T: Sensor + Sync {
+        where T: Sensor {
+            sensors.iter()
+                   .for_each(|ref sensor| sensor.sense(statsd_client))
+            /*
         sensor_pool.install(|| 
             sensors.par_iter()
                    .for_each(|ref sensor| sensor.sense(statsd_client)))
+                   */
 }
 
 fn sleep_until_target_time(last_wakeup: SystemTime, target_interval: Duration) {
