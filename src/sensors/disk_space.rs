@@ -103,7 +103,8 @@ mod platform {
             if return_code == FALSE {
                 info!("Success, got {}", info_struct.f_blocks);
             } else {
-                error!("Failure, got error code {}", return_code);
+                error!("Error getting drive usage for drive '{}': {}",
+                       self.directory_on_disk.to_string_lossy(), Error::last_os_error());
             }
         }
     }
