@@ -68,7 +68,7 @@ mod platform {
 
     const FALSE: i32 = 0;
     const FATAL_ERROR: &'static str = "Fatal error counting metric";
-    const METRICS_PREFIX: &'static str = "drive";
+    const METRICS_PREFIX: &'static str = "physical_memory";
     lazy_static! {
         static ref TOTAL_BYTES: String = METRICS_PREFIX.to_string() + ".total_bytes";
         static ref FREE_BYTES: String = METRICS_PREFIX.to_string() + ".free_bytes";
