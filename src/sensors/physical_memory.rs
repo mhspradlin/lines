@@ -79,8 +79,8 @@ mod platform {
             let mut info_struct: libc::sysinfo = unsafe { mem::zeroed() };
             let return_code = unsafe { libc::sysinfo(&mut info_struct as *mut libc::sysinfo) };
             if return_code == FALSE {
-                let total_accessible_bytes = info_struct.totalram * info_struct.mem_unit;
-                let total_free_bytes = info_struct.freeram * info_struct.mem_unit;
+                let total_accessible_bytes = info_struct.totalram * info_struct.mem_unit as u64;
+                let total_free_bytes = info_struct.freeram * info_struct.mem_unit as u64;
                 info!("Total accessible physical memory: {} MiB", total_accessible_bytes / 1024 / 1024);
                 info!("Total free physical memory: {} MiB", total_free_bytes / 1024 / 1024);
                 statsd_client.count(&TOTAL_BYTES, super::value_or_max(total_accessible_bytes))
