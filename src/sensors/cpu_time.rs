@@ -1,7 +1,6 @@
 extern crate cadence;
 
 use super::Sensor;
-use std::i64;
 
 pub type CpuTimeSensor = platform::PlatformCpuTimeSensor;
 
@@ -24,13 +23,10 @@ mod platform {
     use self::winapi::um::pdh;
     use self::winapi::um::pdh::{PDH_HQUERY, PDH_HCOUNTER, PDH_FMT_DOUBLE, PDH_FMT_COUNTERVALUE};
     use std::os::windows::prelude::*;
-    use std::time::Duration;
-    use std::thread;
     use std::ptr;
     use std::ffi::OsString;
 
     const FALSE: i32 = 0;
-    const SAMPLE_INTERVAL: Duration = Duration::from_millis(1000);
     const ALL_CPU_TIME_PERFORMANCE_QUERY_STRING: &'static str = r"\Processor(_Total)\% Processor Time";
     const FATAL_ERROR: &'static str = "Fatal error counting metric";
     const METRICS_PREFIX: &'static str = "cpu_time";
@@ -56,6 +52,8 @@ mod platform {
                 panic_on_pdh_failure(pdh::PdhAddEnglishCounterW(query, all_cpu_time_query.as_ptr(), 0,
                                                                 &mut cpu_percent_counter as *mut PDH_HCOUNTER),
                                     "adding CPU % Performance Data Helper counter");
+                // We need to collect on this query at least twice before trying to read it
+                panic_on_pdh_failure(pdh::PdhCollectQueryData(query), "collecting Performance Data Helper query");
             }
             PlatformCpuTimeSensor { query, cpu_percent_counter }
         }
@@ -84,12 +82,21 @@ mod platform {
         unsafe {
             let mut counter_value: PDH_FMT_COUNTERVALUE = mem::zeroed();
             panic_on_pdh_failure(pdh::PdhCollectQueryData(query), "collecting Performance Data Helper query");
-            thread::sleep(SAMPLE_INTERVAL);
-            panic_on_pdh_failure(pdh::PdhCollectQueryData(query), "collecting Performance Data Helper query");
             panic_on_pdh_failure(pdh::PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, ptr::null_mut(),
                                                                   &mut counter_value as *mut PDH_FMT_COUNTERVALUE),
                                 "getting Performance Data Helper counter value");
             *counter_value.u.doubleValue()
+        }
+    }
+
+    impl Drop for PlatformCpuTimeSensor {
+        fn drop(&mut self) {
+            let return_code = unsafe { pdh::PdhCloseQuery(self.query) };
+            if return_code == FALSE {
+                info!("Closed Performance Data Helper query successfully");
+            } else {
+                error!("Error closing Performance Data Helper query, ignoring: {:08X} (PDH_STATUS)", return_code);
+            }
         }
     }
 }
