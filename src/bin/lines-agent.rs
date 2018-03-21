@@ -15,7 +15,7 @@ use std::net::UdpSocket;
 use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
               DEFAULT_PORT};
 use lines::Sensor;
-use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor};
+use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor, CpuTimeSensor};
 use std::env;
 
 fn main() {
@@ -29,7 +29,8 @@ fn main() {
 
     let mut sensors = Vec::new();
     //sensors.push(Box::new(DiskSpaceSensor::new(home_dir.into_os_string())));
-    sensors.push(PhysicalMemorySensor::new());
+    //sensors.push(PhysicalMemorySensor::new());
+    sensors.push(CpuTimeSensor::new());
     let num_sensors = sensors.len();
     let sensor_pool = make_sensor_thread_pool(num_sensors as usize);
     let mut last_update = SystemTime::now();
