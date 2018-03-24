@@ -35,7 +35,7 @@ mod platform {
     }
 
     impl Sensor for PhysicalMemorySensor {
-        fn sense(&self, statsd_client: &StatsdClient) {
+        fn sense(&mut self, statsd_client: &StatsdClient) {
             let mut info_struct: MEMORYSTATUSEX = unsafe { mem::zeroed() };
             info_struct.dwLength = mem::size_of::<MEMORYSTATUSEX>() as u32;
             let return_code: i32 = unsafe { sysinfoapi::GlobalMemoryStatusEx(&mut info_struct as *mut MEMORYSTATUSEX) };

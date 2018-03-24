@@ -8,7 +8,6 @@ extern crate lines;
 // Good example for multiplatform code: https://github.com/luser/read-process-memory/blob/master/src/lib.rs
 
 use std::time::{Duration, SystemTime};
-use rayon::prelude::*;
 use rayon::ThreadPool;
 use std::thread;
 use std::net::UdpSocket;
@@ -27,16 +26,17 @@ fn main() {
 
     let home_dir = env::home_dir().expect("Can't find home directory");
 
-    let mut sensors = Vec::new();
-    //sensors.push(Box::new(DiskSpaceSensor::new(home_dir.into_os_string())));
-    //sensors.push(PhysicalMemorySensor::new());
-    sensors.push(CpuTimeSensor::new());
+    //let mut sensors: Vec<Box<Sensor + Send + Sync>> = Vec::new();
+    let mut sensors: Vec<Box<Sensor>> = Vec::new();
+    sensors.push(Box::new(DiskSpaceSensor::new(home_dir.into_os_string())));
+    sensors.push(Box::new(PhysicalMemorySensor::new()));
+    sensors.push(Box::new(CpuTimeSensor::new()));
     let num_sensors = sensors.len();
     let sensor_pool = make_sensor_thread_pool(num_sensors as usize);
     let mut last_update = SystemTime::now();
     loop {
         debug!("Running all sensors in parallel");
-        run_all_sensors_in_parallel(&sensor_pool, &sensors, &statsd_client);
+        run_all_sensors_in_parallel(&sensor_pool, &mut sensors, &statsd_client);
         sleep_until_target_time(last_update, update_interval);
         last_update = SystemTime::now();
     }
@@ -60,16 +60,14 @@ fn make_sensor_thread_pool(num_sensors: usize) -> ThreadPool {
                         .unwrap()
 }
 
-fn run_all_sensors_in_parallel<T>(sensor_pool: &ThreadPool, sensors: &Vec<T>,
+fn run_all_sensors_in_parallel<T>(sensor_pool: &ThreadPool, sensors: &mut Vec<Box<T>>,
                                   statsd_client: &StatsdClient)
-        where T: Sensor {
-            sensors.iter()
-                   .for_each(|ref sensor| sensor.sense(statsd_client))
-            /*
-        sensor_pool.install(|| 
-            sensors.par_iter()
-                   .for_each(|ref sensor| sensor.sense(statsd_client)))
-                   */
+        where T: Sensor + ?Sized {
+    sensor_pool.scope(|scope|
+        for sensor in sensors {
+            scope.spawn(move |_| sensor.sense(statsd_client));
+        }
+    );
 }
 
 fn sleep_until_target_time(last_wakeup: SystemTime, target_interval: Duration) {

@@ -13,14 +13,14 @@ use std::f64;
 static START_TIME: SystemTime = UNIX_EPOCH;
 static PERIOD: Duration = Duration::from_secs(30 * 60);
 
-pub trait Sensor {
-    fn sense(&self, stats_pipeline: &StatsdClient);
+pub trait Sensor: Send {
+    fn sense(&mut self, stats_pipeline: &StatsdClient);
 }
 
 pub struct DummySensor(pub String, pub i64);
 
 impl Sensor for DummySensor {
-    fn sense(&self, statsd_client: &StatsdClient) {
+    fn sense(&mut self, statsd_client: &StatsdClient) {
         let now = SystemTime::now();
         let place_in_interval = (now.duration_since(START_TIME).unwrap().as_secs() % PERIOD.as_secs()) as f64 / PERIOD.as_secs() as f64;
         let sin_parameter = place_in_interval * f64::consts::PI * 2.0;

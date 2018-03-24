@@ -40,6 +40,11 @@ mod platform {
         cpu_percent_counter: PDH_HCOUNTER
     }
 
+    // It's safe to send counter IDs and query IDs across thread boundaries because only one
+    // instance of PlatformCpuTimeSensor is ever referencing a given ID at any given time
+    // (nobody, say, will call PdhCloseQuery on the query when we still might use it)
+    unsafe impl Send for PlatformCpuTimeSensor {}
+
     impl PlatformCpuTimeSensor {
         pub fn init() -> CpuTimeSensor {
             let all_cpu_time_query: Vec<u16> =
@@ -67,7 +72,7 @@ mod platform {
     }
 
     impl Sensor for PlatformCpuTimeSensor {
-        fn sense(&self, statsd_client: &StatsdClient) {
+        fn sense(&mut self, statsd_client: &StatsdClient) {
             let busy_percentage_during_interval = single_double_sample(self.query, self.cpu_percent_counter);
             info!("CPU busy percentage: {:.3}", busy_percentage_during_interval);
             let rounded_busy_percentage: i64 = busy_percentage_during_interval.round() as i64;

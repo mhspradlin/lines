@@ -37,7 +37,7 @@ mod platform {
     }
 
     impl Sensor for DiskSpaceSensor {
-        fn sense(&self, statsd_client: &StatsdClient) {
+        fn sense(&mut self, statsd_client: &StatsdClient) {
             let mut total_accessible_drive_size_bytes: u64 = 0;
             let mut total_free_drive_space_bytes: u64 = 0;
             let wide_vec: Vec<u16> = self.directory_on_disk.encode_wide().collect();
