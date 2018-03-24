@@ -26,7 +26,6 @@ fn main() {
 
     let home_dir = env::home_dir().expect("Can't find home directory");
 
-    //let mut sensors: Vec<Box<Sensor + Send + Sync>> = Vec::new();
     let mut sensors: Vec<Box<Sensor>> = Vec::new();
     sensors.push(Box::new(DiskSpaceSensor::new(home_dir.into_os_string())));
     sensors.push(Box::new(PhysicalMemorySensor::new()));

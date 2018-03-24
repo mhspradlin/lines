@@ -17,3 +17,4 @@ kernel32-sys = { version = "0.2.2", features = [] }
 
 [target.'cfg(target_os="linux")'.dependencies]
 libc = "0.2.39"
+regex = "0.2.10"

@@ -40,9 +40,12 @@ mod platform {
         cpu_percent_counter: PDH_HCOUNTER
     }
 
-    // It's safe to send counter IDs and query IDs across thread boundaries because only one
-    // instance of PlatformCpuTimeSensor is ever referencing a given ID at any given time
-    // (nobody, say, will call PdhCloseQuery on the query when we still might use it)
+    // It's safe to send counter IDs and query IDs within this struct across thread boundaries
+    // because only one instance of PlatformCpuTimeSensor is ever referencing a given ID at any
+    // given time (nobody, say, will call PdhCloseQuery on the query when we still might use it)
+    // This struct is not Sync, but there are no trait methods that take the struct by non-mut
+    // reference, so I don't think it's an issue (you'll need exclusive access to call sense or
+    // ownership to drop)
     unsafe impl Send for PlatformCpuTimeSensor {}
 
     impl PlatformCpuTimeSensor {

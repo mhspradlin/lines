@@ -58,13 +58,16 @@ mod platform {
 #[cfg(target_os="linux")]
 mod platform {
     extern crate libc;
+    extern crate regex;
 
     use super::Sensor;
     use super::PhysicalMemorySensor;
     use cadence::prelude::*;
     use cadence::StatsdClient;
     use std::mem;
-    use std::io::Error;
+    use std::io::{Error, Result};
+    use std::fs::File;
+    use std::str::FromStr;
 
     const FALSE: i32 = 0;
     const FATAL_ERROR: &'static str = "Fatal error counting metric";
@@ -72,6 +75,7 @@ mod platform {
     lazy_static! {
         static ref TOTAL_BYTES: String = METRICS_PREFIX.to_string() + ".total_bytes";
         static ref FREE_BYTES: String = METRICS_PREFIX.to_string() + ".free_bytes";
+        static ref AVAILABLE_MEMORY: Regex = Regex::new(r"^MemAvailable: (\d+) kB$").unwrap();
     }
 
     impl Sensor for PhysicalMemorySensor {
@@ -89,6 +93,16 @@ mod platform {
                     .expect(FATAL_ERROR);
             } else {
                 error!("Error getting physical memory usage: {}", Error::last_os_error());
+            }
+        }
+    }
+
+    fn available_memory_from_meminfo() -> Result<u64> {
+        let mem_info = File::open("/proc/meminfo")?;
+        for line in mem_info.lines {
+            let captures = AVAILABLE_MEMORY.captures_iter(line);
+            for capture in captures {
+                capture.parse()?
             }
         }
     }
