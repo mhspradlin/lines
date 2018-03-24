@@ -79,7 +79,7 @@ mod platform {
     }
 
     impl Sensor for PhysicalMemorySensor {
-        fn sense(&self, statsd_client: &StatsdClient) {
+        fn sense(&mut self, statsd_client: &StatsdClient) {
             let mut info_struct: libc::sysinfo = unsafe { mem::zeroed() };
             let return_code = unsafe { libc::sysinfo(&mut info_struct as *mut libc::sysinfo) };
             if return_code == FALSE {

@@ -88,7 +88,7 @@ mod platform {
     }
 
     impl Sensor for DiskSpaceSensor {
-        fn sense(&self, statsd_client: &StatsdClient) {
+        fn sense(&mut self, statsd_client: &StatsdClient) {
             let dir_on_drive = CString::new(self.directory_on_disk.as_bytes()).unwrap();
             let mut info_struct: statvfs64 = unsafe { mem::zeroed() };
             let return_code: i32 = unsafe {
