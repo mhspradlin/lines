@@ -108,3 +108,28 @@ mod platform {
         }
     }
 }
+
+#[cfg(target_os="linux")]
+mod platform {
+    
+    use super::Sensor;
+    use super::CpuTimeSensor;
+    use cadence::prelude::*;
+    use cadence::StatsdClient;
+
+    pub struct PlatformCpuTimeSensor {
+    }
+
+    impl PlatformCpuTimeSensor {
+        pub fn init() -> PlatformCpuTimeSensor {
+            PlatformCpuTimeSensor {}
+        }
+    }
+
+    impl Sensor for PlatformCpuTimeSensor {
+        fn sense(&mut self, statsd_client: &StatsdClient) {
+            info!("TODO");
+        }
+    }
+
+}

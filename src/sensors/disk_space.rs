@@ -71,7 +71,6 @@ mod platform {
 
     use super::{Sensor, DiskSpaceSensor};
     use std::os::unix::prelude::*;
-    use std::os::raw::c_char;
     use std::ffi::CString;
     use self::libc::statvfs64;
     use cadence::prelude::*;
