@@ -111,25 +111,100 @@ mod platform {
 
 #[cfg(target_os="linux")]
 mod platform {
+    extern crate libc;
+    extern crate regex;
     
     use super::Sensor;
-    use super::CpuTimeSensor;
     use cadence::prelude::*;
     use cadence::StatsdClient;
+    use std::io::{Error, ErrorKind, Result};
+    use std::fs::File;
+    use std::io::BufReader;
+    use std::io::prelude::*;
+    use self::regex::{Regex, Captures};
+
+    const FATAL_ERROR: &'static str = "Fatal error counting metric";
+    const METRICS_PREFIX: &'static str = "cpu_time";
+    lazy_static! {
+        static ref IDLE_TIME: String = METRICS_PREFIX.to_string() + ".idle_time";
+        static ref BUSY_TIME: String = METRICS_PREFIX.to_string() + ".busy_time";
+        static ref CPU_TIME: Regex =
+           Regex::new(&(r"^cpu\s+(?P<user_ticks>\d+)\s+(?P<nice_ticks>\d+)\s+(?P<system_ticks>\d+)\s+".to_string() +
+                          r"(?P<idle_ticks>\d+)\s+(?P<iowait_ticks>\d+)\s+(?P<irq_ticks>\d+)\s+" +
+                          r"(?P<softirq_ticks>\d+)\s+(?P<steal_ticks>\d+)")).unwrap(); 
+    }
 
     pub struct PlatformCpuTimeSensor {
+        last_idle_ticks: u64,
+        last_busy_ticks: u64
     }
 
     impl PlatformCpuTimeSensor {
         pub fn init() -> PlatformCpuTimeSensor {
-            PlatformCpuTimeSensor {}
+            let (starting_idle_ticks, starting_busy_ticks) =
+                cpu_time_from_stat().expect("Error getting initial cpu times from /proc/stat");
+            PlatformCpuTimeSensor { last_idle_ticks: starting_idle_ticks, last_busy_ticks: starting_busy_ticks }
         }
     }
 
     impl Sensor for PlatformCpuTimeSensor {
         fn sense(&mut self, statsd_client: &StatsdClient) {
-            info!("TODO");
+            match cpu_time_from_stat() {
+                Err(e) => {
+                    error!("Error getting cpu times from /proc/stat: {:?}", e);
+                    return
+                },
+                Ok((total_idle_ticks, total_busy_ticks)) => {
+                    let elapsed_idle_ticks = total_idle_ticks - self.last_idle_ticks;     
+                    let elapsed_busy_ticks = total_busy_ticks - self.last_busy_ticks;
+                    let total_elapsed_ticks = elapsed_idle_ticks + elapsed_busy_ticks;
+                    let busy_percentage_during_interval: f64 = (elapsed_busy_ticks as f64 / total_elapsed_ticks as f64) * 100 as f64;
+                    info!("CPU busy percentage: {:.3}", busy_percentage_during_interval);
+                    let rounded_busy_percentage: i64 = busy_percentage_during_interval.round() as i64;
+                    statsd_client.count(&BUSY_TIME, rounded_busy_percentage)
+                        .expect(FATAL_ERROR);
+                    statsd_client.count(&IDLE_TIME, 100 - rounded_busy_percentage)
+                        .expect(FATAL_ERROR);
+                }
+            }
         }
     }
 
+    fn cpu_time_from_stat() -> Result<(u64, u64)> {
+        let cpu_info = File::open("/proc/stat")?;
+        for line in BufReader::new(cpu_info).lines() {
+            match line {
+                Ok(line) => {
+                    if let Some(captures) = CPU_TIME.captures(&line) {
+                        let total_idle_ticks =
+                            parse_capture("idle_ticks", &captures)? +
+                            parse_capture("iowait_ticks", &captures)?;
+                        let total_busy_ticks =
+                            parse_capture("user_ticks", &captures)? +
+                            parse_capture("nice_ticks", &captures)? +
+                            parse_capture("system_ticks", &captures)? +
+                            parse_capture("irq_ticks", &captures)? +
+                            parse_capture("softirq_ticks", &captures)? +
+                            parse_capture("steal_ticks", &captures)?;
+                        return Ok((total_idle_ticks, total_busy_ticks))
+                    }
+                },
+                Err(_) => break
+            } 
+        }
+        
+        let error_message = format!("Could not find match for cpu time regex {}",
+                                    CPU_TIME.as_str());
+        return Err(Error::new(ErrorKind::NotFound, error_message));
+    }
+
+    fn parse_capture(capture_key: &str, captures: &Captures) -> Result<u64> {
+        match captures[capture_key].parse() {
+            Ok(num) => return Ok(num),
+            Err(e) => {
+                let error_message = format!("Unable to parse regex match as number, got error {:?}", e);
+                return Err(Error::new(ErrorKind::NotFound, error_message))
+            }
+        } 
+    }
 }

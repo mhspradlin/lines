@@ -71,7 +71,6 @@ mod platform {
     use std::fs::File;
     use std::io::BufReader;
     use std::io::prelude::*;
-    use std::str::FromStr;
     use self::regex::Regex;
 
     const FALSE: i32 = 0;
@@ -119,7 +118,6 @@ mod platform {
         for line in BufReader::new(mem_info).lines() {
             match line {
                 Ok(line) => {
-                    info!("Got line: {}", line);
                     if let Some(captures) = AVAILABLE_MEMORY.captures(&line) {
                         let mem_available_string = &captures["mem_available"];
                         match mem_available_string.parse() {
