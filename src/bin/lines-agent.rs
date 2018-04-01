@@ -7,6 +7,7 @@ extern crate statsd;
 extern crate cadence;
 extern crate lines;
 extern crate serde_yaml;
+extern crate serde_humantime;
 
 // Good example for multiplatform code: https://github.com/luser/read-process-memory/blob/master/src/lib.rs
 
@@ -14,31 +15,41 @@ use std::time::{Duration, SystemTime};
 use rayon::ThreadPool;
 use std::thread;
 use std::net::UdpSocket;
-use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
-              DEFAULT_PORT};
+use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink};
 use lines::Sensor;
 use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor, CpuTimeSensor};
 use std::env;
+use std::fs::File;
+use std::ffi::OsString;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 struct Config {
     hostname: String,
-    update_interval: u64,
+    #[serde(with = "serde_humantime")]
+    update_interval: Duration,
     statsd_url: String,
-    statsd_port: String
+    statsd_port: u16,
+    disks: Vec<String>
 }
 
 fn main() {
-    log4rs::init_file("config/log4rs.yml", Default::default()).unwrap();
     info!("Starting up");
+    log4rs::init_file("config/log4rs.yml", Default::default())
+        .expect("Error initializing log4rs");
+    let config_file = File::open("config/configuration.yml")
+        .expect("Error loading configuration");
+    let config: Config = serde_yaml::from_reader(config_file)
+        .expect("Error parsing configuration");
 
-    let statsd_client = make_statsd_client("stats.home", DEFAULT_PORT, "cronus");
-    let update_interval = Duration::from_secs(60);
+    info!("Got config file: {:?}", config);
 
-    let home_dir = env::home_dir().expect("Can't find home directory");
+    let statsd_client = make_statsd_client(&config.statsd_url, config.statsd_port, &config.hostname);
+    let update_interval = config.update_interval;
 
     let mut sensors: Vec<Box<Sensor>> = Vec::new();
-    sensors.push(Box::new(DiskSpaceSensor::new(home_dir.into_os_string())));
+    for disk in config.disks {
+        sensors.push(Box::new(DiskSpaceSensor::new(OsString::from(disk))));
+    }
     sensors.push(Box::new(PhysicalMemorySensor::new()));
     sensors.push(Box::new(CpuTimeSensor::new()));
     let num_sensors = sensors.len();
