@@ -3,6 +3,10 @@ name = "lines"
 version = "0.1.0"
 authors = ["Mitch Spradlin <mitch@spradlin.net>"]
 
+[package.metadata.agent]
+name = "LinesAgent"
+description = "Sends basic system health metrics to a metrics aggregator"
+
 [dependencies]
 log = "0.4.1"
 log4rs = "0.8.0"

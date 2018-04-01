@@ -18,7 +18,6 @@ use std::net::UdpSocket;
 use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink};
 use lines::Sensor;
 use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor, CpuTimeSensor};
-use std::env;
 use std::fs::File;
 use std::ffi::OsString;
 
