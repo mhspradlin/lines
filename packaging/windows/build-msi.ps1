@@ -44,7 +44,7 @@ foreach($file in Get-ChildItem packaging\windows\*.wxs) {
     if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
-&"$($env:WIX)\bin\light.exe" -nologo -ext WixUtilExtension -out "target\installer.msi" $(Get-ChildItem target\*.wixobj)
+&"$($env:WIX)\bin\light.exe" -nologo -ext WixUtilExtension -pdbout "target\installer.pdb" -out "packaging\windows\installer.msi" $(Get-ChildItem target\*.wixobj)
 
 Pop-Location
 [Environment]::CurrentDirectory = $PWD

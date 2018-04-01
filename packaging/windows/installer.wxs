@@ -26,6 +26,9 @@
             <Component Id="log4rs.yml" Guid="74152E23-F45B-41A6-9014-1B7E569FF9B3">
                 <File Id="log4rs.yml" Source="config\log4rs.yml" KeyPath="yes"/>
             </Component>
+            <Component Id="configuration.yml" Guid="76899842-B358-4226-B76A-665E91A25A68">
+                <File Id="configuration.yml" Source="config\windows-configuration.yml" KeyPath="yes"/>
+            </Component>
         </DirectoryRef>
         <DirectoryRef Id="APPLICATIONOUTPUTDIRECTORY">
             <Component Id="outputfolder" Guid="C23A1AB6-8813-407A-9EF8-928D8BFFFD1B">
@@ -91,6 +94,7 @@
             <ComponentGroupRef Id='service' />
             <ComponentRef Id="agent.exe" />
             <ComponentRef Id="log4rs.yml" />
+            <ComponentRef Id="configuration.yml" />
             <ComponentRef Id="outputfolder" />
         </Feature>
     </Product>
