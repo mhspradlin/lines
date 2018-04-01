@@ -23,7 +23,7 @@ appenders:
         count: 20
         pattern: "output/log/application.{}.log.gz"
     encoder:
-      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f %Z)(utc)} (({T})) [{l}] {t}:{m}{n}"
+      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f %Z)(utc)} (({T})) [{l}] {t}: {m}{n}"
 
 # Set the default logging level to "info" and attach both appenders to the root
 root:

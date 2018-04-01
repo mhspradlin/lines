@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+    <Product Id="*" UpgradeCode="82CA6B35-6D84-40D5-BE33-9F2022B0C307" Version="1.0.0.0" Language="1033" Name="Lines" Manufacturer="Mitch Spradlin">
+        <Package InstallerVersion="300" Compressed="yes"/>
+        <Media Id="1" Cabinet="lines.cab" EmbedCab="yes" />
+
+        <!-- Step 1: Define the directory structure -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="APPLICATIONROOTDIRECTORY" Name="Lines">
+                    <Directory Id="APPLICATIONCONFIGDIRECTORY" Name="config"/>
+                    <Directory Id="APPLICATIONOUTPUTDIRECTORY" Name="output">
+                        <Directory Id="APPLICATIONLOGDIRECTORY" Name="log"/>
+                    </Directory>
+                </Directory>
+            </Directory>
+        </Directory>
+
+        <!-- Step 2: Add files to your installer package -->
+        <DirectoryRef Id="APPLICATIONROOTDIRECTORY">
+            <Component Id="agent.exe" Guid="AE116716-3295-400D-9FD6-BDB807FB32BE">
+                <File Id="agent.exe" Source="target\release\lines-agent.exe" KeyPath="yes" Checksum="yes"/>
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="APPLICATIONCONFIGDIRECTORY">
+            <Component Id="log4rs.yml" Guid="74152E23-F45B-41A6-9014-1B7E569FF9B3">
+                <File Id="log4rs.yml" Source="config\log4rs.yml" KeyPath="yes"/>
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="APPLICATIONOUTPUTDIRECTORY">
+            <Component Id="outputfolder" Guid="C23A1AB6-8813-407A-9EF8-928D8BFFFD1B">
+                <CreateFolder>
+                    <util:PermissionEx User="Users" GenericAll="yes"/>
+                </CreateFolder>
+            </Component>
+        </DirectoryRef>
+
+        <ComponentGroup Id="service">
+            <Component Id="nssm_component" Guid="*" Directory="APPLICATIONROOTDIRECTORY">
+                <File Id="nssm" KeyPath="yes" Source="target\nssm-$(env.NSSM_VERSION)\win64\nssm.exe" />
+
+                <RemoveFile Id="PurgeLogfiles" Directory="APPLICATIONLOGDIRECTORY" Name="$(env.PACKAGE_NAME)*" On="uninstall" />
+
+                <ServiceInstall Id="ServiceInstall"
+                Account="LocalSystem"
+                ErrorControl="normal"
+                Name="$(env.PACKAGE_NAME)"
+                Start="auto"
+                Type="ownProcess"
+                Vital="yes"
+                Description="$(env.PACKAGE_DESCRIPTION)"
+                DisplayName="$(env.PACKAGE_NAME)">
+                <ServiceConfig OnInstall="yes" OnReinstall="yes" DelayedAutoStart="no" />
+                </ServiceInstall>
+
+                <ServiceControl Id="ControlService"
+                Name="$(env.PACKAGE_NAME)"
+                Wait="yes"
+                Start="install"
+                Stop="both"
+                Remove="uninstall"
+                />
+
+                <RegistryKey Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\$(env.PACKAGE_NAME)">
+                <RegistryKey Key="Parameters">
+                    <RegistryValue Name="AppDirectory" Value="[APPLICATIONROOTDIRECTORY]" Type="expandable" />
+                    <RegistryValue Name="Application" Value="[APPLICATIONROOTDIRECTORY]lines-agent.exe" Type="expandable" />
+                    <RegistryValue Name="AppParameters" Value='--put-parameters-here' Type="expandable" />
+
+                    <RegistryValue Name="AppStdout" Value="[APPLICATIONLOGDIRECTORY]$(env.PACKAGE_NAME).stdout" Type="expandable" />
+                    <RegistryValue Name="AppStderr" Value="[APPLICATIONLOGDIRECTORY]$(env.PACKAGE_NAME).stderr" Type="expandable" />
+                    <RegistryValue Name="AppRotateFiles" Value="1" Type="integer" />
+                    <RegistryValue Name="AppRotateOnline" Value="1" Type="integer" />
+
+                    <!-- Rotate after 100 MB -->
+                    <RegistryValue Name="AppRotateBytes" Value="104857600" Type="integer" />
+                    <RegistryValue Name="AppStdoutCopyAndTruncate" Value="1" Type="integer" />
+                    <RegistryValue Name="AppStderrCopyAndTruncate" Value="1" Type="integer" />
+                    <RegistryValue Name="AppRotateDelay" Value="1000" Type="integer" />
+
+                    <RegistryKey Key="AppExit">
+                    <RegistryValue Type="string" Value="Restart" />
+                    </RegistryKey>
+                </RegistryKey>
+                </RegistryKey>
+            </Component>
+        </ComponentGroup>
+
+        <!-- Step 3: Tell WiX to install the files -->
+        <Feature Id="MainApplication" Title="Main Application" Level="1">
+            <ComponentGroupRef Id='service' />
+            <ComponentRef Id="agent.exe" />
+            <ComponentRef Id="log4rs.yml" />
+            <ComponentRef Id="outputfolder" />
+        </Feature>
+    </Product>
+</Wix>

@@ -32,6 +32,7 @@ mod platform {
     lazy_static! {
         static ref TOTAL_BYTES: String = METRICS_PREFIX.to_string() + ".total_bytes";
         static ref FREE_BYTES: String = METRICS_PREFIX.to_string() + ".free_bytes";
+        static ref AVAILABLE_BYTES: String = METRICS_PREFIX.to_string() + ".available_bytes";
     }
 
     impl Sensor for PhysicalMemorySensor {

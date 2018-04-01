@@ -1,9 +1,12 @@
 #[macro_use] extern crate log;
+#[macro_use] extern crate serde_derive;
+
 extern crate log4rs;
 extern crate rayon;
 extern crate statsd;
 extern crate cadence;
 extern crate lines;
+extern crate serde_yaml;
 
 // Good example for multiplatform code: https://github.com/luser/read-process-memory/blob/master/src/lib.rs
 
@@ -16,6 +19,14 @@ use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink,
 use lines::Sensor;
 use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor, CpuTimeSensor};
 use std::env;
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+struct Config {
+    hostname: String,
+    update_interval: u64,
+    statsd_url: String,
+    statsd_port: String
+}
 
 fn main() {
     log4rs::init_file("config/log4rs.yml", Default::default()).unwrap();
