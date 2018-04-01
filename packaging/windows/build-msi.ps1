@@ -8,34 +8,35 @@ $env:CFG_VER_MINOR = $version[1]
 $env:CFG_VER_PATCH = $version[2]
 $env:NSSM_VERSION = "2.24-101-g897c7ad"
 $env:PACKAGE_NAME = "LinesAgent"
-$env:PACKAGE_DESCRIPTION = "Sends basic system health metrics to metrics aggregator"
+$env:PACKAGE_DESCRIPTION = "Sends basic system health metrics to a metrics aggregator"
 
-# Taken from the consul-agent install.ps1 file
-# Download nssm.zip
-Write-Host Downloading NSSM ZIP
-$WebClient = New-Object System.Net.WebClient
-$client = New-Object System.Net.WebClient
-try {
-  $WebClient.DownloadFile("http://www.nssm.cc/ci/nssm-$env:NSSM_VERSION.zip", "target\nssm.zip")
-} catch [System.Net.WebException] {
-  # $_ is set to the ErrorRecord of the exception
-  if ($_.Exception.InnerException) {
-    Write-Host $_.Exception.InnerException.Message
-  } else {
-   Write-Host $_.Exception.Message
-  }
+if (!(Get-ChildItem "target\nssm-$env:NSSM_VERSION").Exists) {
+    # Taken from the consul-agent install.ps1 file
+    # Download nssm.zip
+    Write-Host Downloading NSSM ZIP
+    $WebClient = New-Object System.Net.WebClient
+    $client = New-Object System.Net.WebClient
+    try {
+        $WebClient.DownloadFile("http://www.nssm.cc/ci/nssm-$env:NSSM_VERSION.zip", "target\nssm.zip")
+    } catch [System.Net.WebException] {
+        # $_ is set to the ErrorRecord of the exception
+        if ($_.Exception.InnerException) {
+            Write-Host $_.Exception.InnerException.Message
+        } else {
+            Write-Host $_.Exception.Message
+        }
+    }
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    function Unzip {
+        param([string]$zipfile, [string]$outpath)
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
+    }
+
+    # Unpack nssm.zip
+    Unzip "target\nssm.zip" "target\"
+    # End copying
 }
-
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-function Unzip
-{
-    param([string]$zipfile, [string]$outpath)
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
-}
-
-# Unpack nssm.zip
-Unzip "target\nssm.zip" "target\"
-# End copying
 
 foreach($file in Get-ChildItem packaging\windows\*.wxs) {
     $in = $file.Name

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" UpgradeCode="82CA6B35-6D84-40D5-BE33-9F2022B0C307" Version="1.0.0.0" Language="1033" Name="Lines" Manufacturer="Mitch Spradlin">
+    <Product Id="*" UpgradeCode="82CA6B35-6D84-40D5-BE33-9F2022B0C307" Version="$(env.CFG_VER_MAJOR).$(env.CFG_VER_MINOR).$(env.CFG_VER_PATCH).0" Language="1033" Name="Lines" Manufacturer="Mitch Spradlin">
         <Package InstallerVersion="300" Compressed="yes"/>
         <Media Id="1" Cabinet="lines.cab" EmbedCab="yes" />
 
@@ -27,11 +27,18 @@
                 <File Id="log4rs.yml" Source="config\log4rs.yml" KeyPath="yes"/>
             </Component>
             <Component Id="configuration.yml" Guid="76899842-B358-4226-B76A-665E91A25A68">
-                <File Id="configuration.yml" Source="config\windows-configuration.yml" KeyPath="yes"/>
+                <File Id="configuration.yml" Name="configuration.yml" Source="config\windows-configuration.yml" KeyPath="yes"/>
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="APPLICATIONOUTPUTDIRECTORY">
             <Component Id="outputfolder" Guid="C23A1AB6-8813-407A-9EF8-928D8BFFFD1B">
+                <CreateFolder>
+                    <util:PermissionEx User="Users" GenericAll="yes"/>
+                </CreateFolder>
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="APPLICATIONLOGDIRECTORY">
+            <Component Id="logfolder" Guid="858509B0-D33C-4379-A2A3-1CAA172F075F">
                 <CreateFolder>
                     <util:PermissionEx User="Users" GenericAll="yes"/>
                 </CreateFolder>
@@ -96,6 +103,7 @@
             <ComponentRef Id="log4rs.yml" />
             <ComponentRef Id="configuration.yml" />
             <ComponentRef Id="outputfolder" />
+            <ComponentRef Id="logfolder" />
         </Feature>
     </Product>
 </Wix>
