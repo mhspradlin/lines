@@ -1,5 +1,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate serde_derive;
+#[macro_use] extern crate quicli;
+#[macro_use] extern crate lazy_static;
 
 extern crate log4rs;
 extern crate rayon;
@@ -8,9 +10,12 @@ extern crate cadence;
 extern crate lines;
 extern crate serde_yaml;
 extern crate serde_humantime;
+extern crate hostname;
+extern crate regex;
 
 // Good example for multiplatform code: https://github.com/luser/read-process-memory/blob/master/src/lib.rs
 
+use quicli::prelude::*;
 use std::time::{Duration, SystemTime};
 use rayon::ThreadPool;
 use std::thread;
@@ -20,6 +25,18 @@ use lines::Sensor;
 use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor, CpuTimeSensor};
 use std::fs::File;
 use std::ffi::OsString;
+use std::collections::HashMap;
+use std::io::BufReader;
+use std::io::prelude::*;
+use regex::Regex;
+
+#[derive(Debug, StructOpt)]
+struct Arguments {
+    #[structopt(long = "config-directory", short = "c")]
+    config_directory: String,
+    #[structopt(long = "output-directory", short = "o")]
+    output_directory: String
+}
 
 #[derive(Debug, PartialEq, Deserialize)]
 struct Config {
@@ -31,14 +48,41 @@ struct Config {
     disks: Vec<String>
 }
 
-fn main() {
-    info!("Starting up");
-    log4rs::init_file("config/log4rs.yml", Default::default())
+static HOSTNAME_VARIABLE: &str = "hostname";
+static CONFIG_DIR_VARIABLE: &str = "config_directory";
+static OUTPUT_DIR_VARIABLE: &str = "output_directory";
+
+lazy_static! {
+    // Variable syntax for config files is `${variable_name}`
+    static ref VARIABLE_REGEX: Regex = Regex::new(r"\$\{(.*?)\}").unwrap();
+}
+
+main!(|args: Arguments| {
+    info!("Starting up with arguments {:?}", args);
+    let config_directory = &args.config_directory;
+    let output_directory = &args.output_directory;
+    let bindings = create_variable_bindings(config_directory, output_directory);
+
+    // Substitute special tokens in the logging config
+    let generated_logging_config = output_directory.to_string() + "/generated_log4rs.yml";
+    {
+        let base_logging_config = File::open(config_directory.to_string() + "/log4rs.yml")?;
+        let mut substituted_logging_config = File::create(generated_logging_config.clone())?;
+        for line in BufReader::new(base_logging_config).lines() {
+            let line = line?;
+            substituted_logging_config.write_all(substitute_bindings_in_string(&line, &bindings).as_bytes())?;
+            substituted_logging_config.write_all(b"\n")?;
+        }
+        substituted_logging_config.flush()?;
+    }
+
+    log4rs::init_file(generated_logging_config.clone(), Default::default())
         .expect("Error initializing log4rs");
-    let config_file = File::open("config/configuration.yml")
+    let config_file = File::open(config_directory.to_string() + "/configuration.yml")
         .expect("Error loading configuration");
     let config: Config = serde_yaml::from_reader(config_file)
         .expect("Error parsing configuration");
+    let config = substitute_variables(config, &bindings);
 
     info!("Got config file: {:?}", config);
 
@@ -60,6 +104,62 @@ fn main() {
         sleep_until_target_time(last_update, update_interval);
         last_update = SystemTime::now();
     }
+});
+
+fn create_variable_bindings<'a>(config_directory: &'a str, output_directory: &'a str) -> HashMap<&'a str, String> {
+    let mut bindings = HashMap::new();
+    bindings.insert(HOSTNAME_VARIABLE, hostname::get_hostname().unwrap());
+    bindings.insert(CONFIG_DIR_VARIABLE, config_directory.to_string());
+    bindings.insert(OUTPUT_DIR_VARIABLE, output_directory.to_string());
+    bindings
+}
+
+fn substitute_variables(config: Config, bindings: &HashMap<&str, String>) -> Config {
+    Config {
+        hostname: substitute_bindings_in_string(&config.hostname, bindings),
+        statsd_url: substitute_bindings_in_string(&config.statsd_url, bindings),
+        .. config
+    }
+}
+
+fn substitute_bindings_in_string(template: &str, bindings: &HashMap<&str, String>) -> String {
+    let mut substituted_string = String::new();
+    let mut last_match_end_index = 0;
+    for captures in VARIABLE_REGEX.captures_iter(template) {
+        let whole_match = captures.get(0).unwrap();
+        let capture = captures.get(1).unwrap();
+        let match_start_index = whole_match.start();
+        // Copy the part of the string that wasn't matched
+        if match_start_index > last_match_end_index {
+            let interim_characters = template.get(last_match_end_index..match_start_index).unwrap();
+            substituted_string.push_str(interim_characters);
+        }
+        // Get the binding for that variable and then push it onto the string
+        let captured_variable_name = capture.as_str();
+        // If we don't find the binding, substitute the whole match (including the variable wrapping syntax)
+        // This leaves anything that isn't an exact match for a variable unsubstituted
+        let potential_binding: Option<&str> = bindings.get(captured_variable_name).map(|val| val.as_str());
+        let binding: &str = potential_binding.unwrap_or_else(|| captures.get(0).unwrap().as_str());
+        substituted_string.push_str(binding);
+        last_match_end_index = whole_match.end();
+    }
+    // Push the remaining part of the string after the last match (or the whole string if there were no matches)
+    if last_match_end_index < template.len() {
+        let trailing_characters = template.get(last_match_end_index..template.len()).unwrap();
+        substituted_string.push_str(trailing_characters);
+    }
+
+    substituted_string
+}
+
+#[test]
+fn substitute_bindings_in_string_test() {
+    let template = "A ${variable.name} string with ${other-name} ${but-not-all-there} substitutions";
+    let mut bindings = HashMap::new();
+    bindings.insert("variable.name", "template".to_string());
+    bindings.insert("other-name", "multiple".to_string());
+    let substituted = substitute_bindings_in_string(template, bindings);
+    assert_eq!(substituted, "A template string with multiple ${but-not-all-there} substitutions");
 }
 
 fn make_statsd_client(host: &str, port: u16, metrics_prefix: &str) -> StatsdClient {

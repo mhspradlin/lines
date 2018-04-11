@@ -11,7 +11,7 @@ appenders:
   # An appender named "application" that writes to a file with a custom pattern encoder
   application:
     kind: rolling_file
-    path: "output/log/application.log"
+    path: "${output_directory}/log/application.log"
     policy: 
       kind: compound
       trigger:
@@ -21,7 +21,7 @@ appenders:
         kind: fixed_window
         base: 1
         count: 20
-        pattern: "output/log/application.{}.log.gz"
+        pattern: "${output_directory}/log/application.{}.log.gz"
     encoder:
       pattern: "{d(%Y-%m-%d %H:%M:%S%.3f %Z)(utc)} (({T})) [{l}] {t}: {m}{n}"
 

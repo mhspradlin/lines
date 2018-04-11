@@ -18,6 +18,9 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.7"
 serde-humantime = "0.1.1"
+quicli = "0.2"
+hostname = "0.1"
+regex = "0.2.10"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.4", features = ["pdh"] }
@@ -25,4 +28,3 @@ kernel32-sys = { version = "0.2.2", features = [] }
 
 [target.'cfg(target_os="linux")'.dependencies]
 libc = "0.2.39"
-regex = "0.2.10"

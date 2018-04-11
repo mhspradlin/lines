@@ -75,7 +75,7 @@
                 <RegistryKey Key="Parameters">
                     <RegistryValue Name="AppDirectory" Value="[APPLICATIONROOTDIRECTORY]" Type="expandable" />
                     <RegistryValue Name="Application" Value="[APPLICATIONROOTDIRECTORY]lines-agent.exe" Type="expandable" />
-                    <RegistryValue Name="AppParameters" Value='--put-parameters-here' Type="expandable" />
+                    <RegistryValue Name="AppParameters" Value='--config-directory [APPLICATIONCONFIGDIRECTORY] --output-directory [APPLICATIONOUTPUTDIRECTORY]' Type="expandable" />
 
                     <RegistryValue Name="AppStdout" Value="[APPLICATIONLOGDIRECTORY]$(env.PACKAGE_NAME).stdout" Type="expandable" />
                     <RegistryValue Name="AppStderr" Value="[APPLICATIONLOGDIRECTORY]$(env.PACKAGE_NAME).stderr" Type="expandable" />
