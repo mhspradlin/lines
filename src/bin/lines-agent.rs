@@ -57,7 +57,8 @@ lazy_static! {
     static ref VARIABLE_REGEX: Regex = Regex::new(r"\$\{(.*?)\}").unwrap();
 }
 
-main!(|args: Arguments| {
+fn main() {
+    let args = Arguments::from_args();
     info!("Starting up with arguments {:?}", args);
     let config_directory = &args.config_directory;
     let output_directory = &args.output_directory;
@@ -66,26 +67,34 @@ main!(|args: Arguments| {
     // Substitute special tokens in the logging config
     let generated_logging_config = output_directory.to_string() + "/generated_log4rs.yml";
     {
-        let base_logging_config = File::open(config_directory.to_string() + "/log4rs.yml")?;
-        let mut substituted_logging_config = File::create(generated_logging_config.clone())?;
+        let base_logging_config = File::open(config_directory.to_string() + "/log4rs.yml").unwrap();
+        let mut substituted_logging_config = File::create(generated_logging_config.clone()).unwrap();
         for line in BufReader::new(base_logging_config).lines() {
-            let line = line?;
-            substituted_logging_config.write_all(substitute_bindings_in_string(&line, &bindings).as_bytes())?;
-            substituted_logging_config.write_all(b"\n")?;
+            let line = line.unwrap();
+            substituted_logging_config.write_all(substitute_bindings_in_string(&line, &bindings).as_bytes()).unwrap();
+            substituted_logging_config.write_all(b"\n").unwrap();
         }
-        substituted_logging_config.flush()?;
+        substituted_logging_config.flush().unwrap();
+        drop(substituted_logging_config);
+        thread::sleep(Duration::from_millis(1000));
     }
 
-    log4rs::init_file(generated_logging_config.clone(), Default::default())
-        .expect("Error initializing log4rs");
-    let config_file = File::open(config_directory.to_string() + "/configuration.yml")
-        .expect("Error loading configuration");
+    log4rs::init_file(generated_logging_config.clone(), Default::default()).unwrap();
+    let config_file = File::open(config_directory.to_string() + "/configuration.yml").unwrap();
     let config: Config = serde_yaml::from_reader(config_file)
         .expect("Error parsing configuration");
     let config = substitute_variables(config, &bindings);
 
     info!("Got config file: {:?}", config);
 
+    let exit_status = run(config);
+    if let Err(e) = exit_status {
+        error!("Exiting with error: {}", e);
+        std::process::exit(1);
+    }
+}
+
+fn run(config: Config) -> Result<()> {
     let statsd_client = make_statsd_client(&config.statsd_url, config.statsd_port, &config.hostname);
     let update_interval = config.update_interval;
 
@@ -104,7 +113,7 @@ main!(|args: Arguments| {
         sleep_until_target_time(last_update, update_interval);
         last_update = SystemTime::now();
     }
-});
+}
 
 fn create_variable_bindings<'a>(config_directory: &'a str, output_directory: &'a str) -> HashMap<&'a str, String> {
     let mut bindings = HashMap::new();
