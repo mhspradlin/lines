@@ -4,4 +4,4 @@ update_interval: 60 seconds
 statsd_url: stats.home
 statsd_port: 8125
 disks:
-  - C:\
+  - ${output_directory}

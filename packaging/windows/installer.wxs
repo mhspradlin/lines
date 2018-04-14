@@ -27,7 +27,7 @@
                 <File Id="log4rs.yml" Source="config\log4rs.yml" KeyPath="yes"/>
             </Component>
             <Component Id="configuration.yml" Guid="76899842-B358-4226-B76A-665E91A25A68">
-                <File Id="configuration.yml" Name="configuration.yml" Source="config\windows-configuration.yml" KeyPath="yes"/>
+                <File Id="configuration.yml" Name="configuration.yml" Source="config\configuration.yml" KeyPath="yes"/>
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="APPLICATIONOUTPUTDIRECTORY">
@@ -75,7 +75,10 @@
                 <RegistryKey Key="Parameters">
                     <RegistryValue Name="AppDirectory" Value="[APPLICATIONROOTDIRECTORY]" Type="expandable" />
                     <RegistryValue Name="Application" Value="[APPLICATIONROOTDIRECTORY]lines-agent.exe" Type="expandable" />
-                    <RegistryValue Name="AppParameters" Value='--config-directory [APPLICATIONCONFIGDIRECTORY] --output-directory [APPLICATIONOUTPUTDIRECTORY]' Type="expandable" />
+                    <!-- It's important to &quot; the path, because it may have spaces in it -->
+                    <!-- The substitution is such that it always ends in '\', which when sent to the application will escape the trailing &quot;,
+                         adding another '\' turns it into an escaped '\' instead -->
+                    <RegistryValue Name="AppParameters" Value="--config-directory &quot;[APPLICATIONCONFIGDIRECTORY]\&quot; --output-directory &quot;[APPLICATIONOUTPUTDIRECTORY]\&quot;" Type="expandable" />
 
                     <RegistryValue Name="AppStdout" Value="[APPLICATIONLOGDIRECTORY]$(env.PACKAGE_NAME).stdout" Type="expandable" />
                     <RegistryValue Name="AppStderr" Value="[APPLICATIONLOGDIRECTORY]$(env.PACKAGE_NAME).stderr" Type="expandable" />

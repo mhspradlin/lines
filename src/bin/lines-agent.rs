@@ -1,17 +1,20 @@
-#[macro_use] extern crate log;
-#[macro_use] extern crate serde_derive;
-#[macro_use] extern crate quicli;
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate serde_derive;
+extern crate quicli;
 
+extern crate cadence;
+extern crate hostname;
+extern crate lines;
 extern crate log4rs;
 extern crate rayon;
-extern crate statsd;
-extern crate cadence;
-extern crate lines;
-extern crate serde_yaml;
-extern crate serde_humantime;
-extern crate hostname;
 extern crate regex;
+extern crate serde_humantime;
+extern crate serde_yaml;
+extern crate statsd;
 
 // Good example for multiplatform code: https://github.com/luser/read-process-memory/blob/master/src/lib.rs
 
@@ -20,22 +23,24 @@ use std::time::{Duration, SystemTime};
 use rayon::ThreadPool;
 use std::thread;
 use std::net::UdpSocket;
-use cadence::{StatsdClient, QueuingMetricSink, UdpMetricSink};
+use cadence::{QueuingMetricSink, StatsdClient, UdpMetricSink};
 use lines::Sensor;
-use lines::sensors::{DiskSpaceSensor, PhysicalMemorySensor, CpuTimeSensor};
+use lines::sensors::{CpuTimeSensor, DiskSpaceSensor, PhysicalMemorySensor};
 use std::fs::File;
 use std::ffi::OsString;
+use std::path::PathBuf;
 use std::collections::HashMap;
 use std::io::BufReader;
 use std::io::prelude::*;
 use regex::Regex;
+use std::env;
 
 #[derive(Debug, StructOpt)]
 struct Arguments {
-    #[structopt(long = "config-directory", short = "c")]
-    config_directory: String,
-    #[structopt(long = "output-directory", short = "o")]
-    output_directory: String
+    #[structopt(long = "config-directory", short = "c", parse(from_os_str))]
+    config_directory: PathBuf,
+    #[structopt(long = "output-directory", short = "o", parse(from_os_str))]
+    output_directory: PathBuf,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -45,7 +50,7 @@ struct Config {
     update_interval: Duration,
     statsd_url: String,
     statsd_port: u16,
-    disks: Vec<String>
+    disks: Vec<String>,
 }
 
 static HOSTNAME_VARIABLE: &str = "hostname";
@@ -58,20 +63,38 @@ lazy_static! {
 }
 
 fn main() {
+    println!("Starting up");
+    for (index, arg) in env::args_os().enumerate() {
+        println!("Argument {}: {:?}", index, arg);
+    }
     let args = Arguments::from_args();
-    info!("Starting up with arguments {:?}", args);
+    println!("Parsed arguments {:?}", args);
     let config_directory = &args.config_directory;
     let output_directory = &args.output_directory;
-    let bindings = create_variable_bindings(config_directory, output_directory);
+    let config_directory_string = config_directory.to_string_lossy();
+    let output_directory_string = output_directory.to_string_lossy();
+    let bindings = create_variable_bindings(&config_directory_string, &output_directory_string);
 
     // Substitute special tokens in the logging config
-    let generated_logging_config = output_directory.to_string() + "/generated_log4rs.yml";
+    let generated_logging_config = output_directory.join("generated_log4rs.yml");
     {
-        let base_logging_config = File::open(config_directory.to_string() + "/log4rs.yml").unwrap();
-        let mut substituted_logging_config = File::create(generated_logging_config.clone()).unwrap();
+        let base_logging_config = config_directory.join("log4rs.yml");
+        println!(
+            "Looking for logging config source at {}",
+            base_logging_config.display()
+        );
+        println!(
+            "Writing generated logging config at {}",
+            generated_logging_config.display()
+        );
+        let base_logging_config = File::open(base_logging_config).unwrap();
+        let mut substituted_logging_config =
+            File::create(generated_logging_config.clone()).unwrap();
         for line in BufReader::new(base_logging_config).lines() {
             let line = line.unwrap();
-            substituted_logging_config.write_all(substitute_bindings_in_string(&line, &bindings).as_bytes()).unwrap();
+            substituted_logging_config
+                .write_all(substitute_bindings_in_string(&line, &bindings).as_bytes())
+                .unwrap();
             substituted_logging_config.write_all(b"\n").unwrap();
         }
         substituted_logging_config.flush().unwrap();
@@ -80,14 +103,14 @@ fn main() {
     }
 
     log4rs::init_file(generated_logging_config.clone(), Default::default()).unwrap();
-    let config_file = File::open(config_directory.to_string() + "/configuration.yml").unwrap();
-    let config: Config = serde_yaml::from_reader(config_file)
-        .expect("Error parsing configuration");
-    let config = substitute_variables(config, &bindings);
+    let config_file = File::open(config_directory.join("configuration.yml")).unwrap();
+    let config: Config = serde_yaml::from_reader(config_file).expect("Error parsing configuration");
+    let substituted_config = substitute_variables(config, &bindings);
 
-    info!("Got config file: {:?}", config);
+    info!("Started up with arguments: {:?}", args);
+    info!("Interpreted configuration: {:?}", substituted_config);
 
-    let exit_status = run(config);
+    let exit_status = run(substituted_config);
     if let Err(e) = exit_status {
         error!("Exiting with error: {}", e);
         std::process::exit(1);
@@ -95,7 +118,8 @@ fn main() {
 }
 
 fn run(config: Config) -> Result<()> {
-    let statsd_client = make_statsd_client(&config.statsd_url, config.statsd_port, &config.hostname);
+    let statsd_client =
+        make_statsd_client(&config.statsd_url, config.statsd_port, &config.hostname);
     let update_interval = config.update_interval;
 
     let mut sensors: Vec<Box<Sensor>> = Vec::new();
@@ -115,7 +139,10 @@ fn run(config: Config) -> Result<()> {
     }
 }
 
-fn create_variable_bindings<'a>(config_directory: &'a str, output_directory: &'a str) -> HashMap<&'a str, String> {
+fn create_variable_bindings<'a>(
+    config_directory: &'a str,
+    output_directory: &'a str,
+) -> HashMap<&'a str, String> {
     let mut bindings = HashMap::new();
     bindings.insert(HOSTNAME_VARIABLE, hostname::get_hostname().unwrap());
     bindings.insert(CONFIG_DIR_VARIABLE, config_directory.to_string());
@@ -127,8 +154,40 @@ fn substitute_variables(config: Config, bindings: &HashMap<&str, String>) -> Con
     Config {
         hostname: substitute_bindings_in_string(&config.hostname, bindings),
         statsd_url: substitute_bindings_in_string(&config.statsd_url, bindings),
+        disks: config.disks
+                     .iter()
+                     .map(|disk| substitute_bindings_in_string(&disk, bindings))
+                     .collect(),
         .. config
     }
+}
+
+#[test]
+fn substitute_variables_substitutes_hostname_and_url() {
+    let start_config = Config {
+        hostname: "${variable-one}".to_string(),
+        statsd_url: "other ${variable}".to_string(),
+        update_interval: Duration::from_millis(0),
+        statsd_port: 1234,
+        disks: vec!["disk-one".to_string()]
+    };
+
+    let mut bindings = HashMap::new();
+    bindings.insert("variable-one", "hostname".to_string());
+    bindings.insert("variable", "thing".to_string());
+
+    let expected_config = Config {
+        hostname: "hostname".to_string(),
+        statsd_url: "other thing".to_string(),
+        update_interval: Duration::from_millis(0),
+        statsd_port: 1234,
+        disks: vec!["disk-one".to_string()]
+    };
+
+    assert_eq!(
+        substitute_variables(start_config, &bindings),
+        expected_config
+    );
 }
 
 fn substitute_bindings_in_string(template: &str, bindings: &HashMap<&str, String>) -> String {
@@ -140,14 +199,17 @@ fn substitute_bindings_in_string(template: &str, bindings: &HashMap<&str, String
         let match_start_index = whole_match.start();
         // Copy the part of the string that wasn't matched
         if match_start_index > last_match_end_index {
-            let interim_characters = template.get(last_match_end_index..match_start_index).unwrap();
+            let interim_characters = template
+                .get(last_match_end_index..match_start_index)
+                .unwrap();
             substituted_string.push_str(interim_characters);
         }
         // Get the binding for that variable and then push it onto the string
         let captured_variable_name = capture.as_str();
         // If we don't find the binding, substitute the whole match (including the variable wrapping syntax)
         // This leaves anything that isn't an exact match for a variable unsubstituted
-        let potential_binding: Option<&str> = bindings.get(captured_variable_name).map(|val| val.as_str());
+        let potential_binding: Option<&str> =
+            bindings.get(captured_variable_name).map(|val| val.as_str());
         let binding: &str = potential_binding.unwrap_or_else(|| captures.get(0).unwrap().as_str());
         substituted_string.push_str(binding);
         last_match_end_index = whole_match.end();
@@ -163,12 +225,16 @@ fn substitute_bindings_in_string(template: &str, bindings: &HashMap<&str, String
 
 #[test]
 fn substitute_bindings_in_string_test() {
-    let template = "A ${variable.name} string with ${other-name} ${but-not-all-there} substitutions";
+    let template =
+        "A ${variable.name} string with ${other-name} ${but-not-all-there} substitutions";
     let mut bindings = HashMap::new();
     bindings.insert("variable.name", "template".to_string());
     bindings.insert("other-name", "multiple".to_string());
-    let substituted = substitute_bindings_in_string(template, bindings);
-    assert_eq!(substituted, "A template string with multiple ${but-not-all-there} substitutions");
+    let substituted = substitute_bindings_in_string(template, &bindings);
+    assert_eq!(
+        substituted,
+        "A template string with multiple ${but-not-all-there} substitutions"
+    );
 }
 
 fn make_statsd_client(host: &str, port: u16, metrics_prefix: &str) -> StatsdClient {
@@ -183,25 +249,33 @@ fn make_statsd_client(host: &str, port: u16, metrics_prefix: &str) -> StatsdClie
 
 fn make_sensor_thread_pool(num_sensors: usize) -> ThreadPool {
     rayon::ThreadPoolBuilder::new()
-                        .num_threads(num_sensors as usize)
-                        .thread_name(|thread_index| "sensor-pool-thread-".to_string() + &thread_index.to_string())
-                        .build()
-                        .unwrap()
+        .num_threads(num_sensors as usize)
+        .thread_name(|thread_index| "sensor-pool-thread-".to_string() + &thread_index.to_string())
+        .build()
+        .unwrap()
 }
 
-fn run_all_sensors_in_parallel<T>(sensor_pool: &ThreadPool, sensors: &mut Vec<Box<T>>,
-                                  statsd_client: &StatsdClient)
-        where T: Sensor + ?Sized {
-    sensor_pool.scope(|scope|
+fn run_all_sensors_in_parallel<T>(
+    sensor_pool: &ThreadPool,
+    sensors: &mut Vec<Box<T>>,
+    statsd_client: &StatsdClient,
+) where
+    T: Sensor + ?Sized,
+{
+    sensor_pool.scope(|scope| {
         for sensor in sensors {
             scope.spawn(move |_| sensor.sense(statsd_client));
         }
-    );
+    });
 }
 
 fn sleep_until_target_time(last_wakeup: SystemTime, target_interval: Duration) {
-    let time_until_next_wakeup = target_interval - SystemTime::now().duration_since(last_wakeup).unwrap();
-    debug!("Time until next wakeup: {:.3}s", duration_in_seconds(&time_until_next_wakeup));
+    let time_until_next_wakeup =
+        target_interval - SystemTime::now().duration_since(last_wakeup).unwrap();
+    debug!(
+        "Time until next wakeup: {:.3}s",
+        duration_in_seconds(&time_until_next_wakeup)
+    );
     if time_until_next_wakeup > Duration::from_millis(0) {
         thread::sleep(time_until_next_wakeup);
     }
