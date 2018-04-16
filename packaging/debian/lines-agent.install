@@ -1,0 +1,3 @@
+config/configuration.yml etc/lines-agent/configuration.yml
+config/log4rs.yml etc/lines-agent/log4rs.yml
+target/release/lines-agent usr/bin/lines-agent

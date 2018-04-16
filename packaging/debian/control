@@ -1,0 +1,12 @@
+Source: lines
+Section: utils
+Priority: optional
+Maintainer: Mitchell Spradlin <mitch@spradlin.net>
+Build-Depends: debhelper (>= 8), dh-systemd
+Standards-Version: 0.1.0
+Version: 0.1.0
+
+Package: lines
+Architecture: all
+Description: lightweight monitoring agent
+ lines is a configurable monitoring agent that sends metrics to a statsd instance.
