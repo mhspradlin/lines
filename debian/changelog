@@ -1,3 +1,9 @@
+lines-agent (0.1ubuntu1) stable; urgency=medium
+
+  * Now emitting drive metrics with the drive name
+
+ -- Mitchell Spradlin <mitch@spradlin.net>  Wed, 18 Apr 2018 08:20:45 -0700
+
 lines-agent (0.1) experimental; urgency=medium
 
   * Initial release. (Closes: #00001)

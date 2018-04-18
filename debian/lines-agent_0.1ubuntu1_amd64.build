@@ -1,7 +1,7 @@
  dpkg-buildpackage -rfakeroot -D -us -uc
 dpkg-buildpackage: source package lines-agent
-dpkg-buildpackage: source version 0.1
-dpkg-buildpackage: source distribution experimental
+dpkg-buildpackage: source version 0.1ubuntu1
+dpkg-buildpackage: source distribution stable
 dpkg-buildpackage: source changed by Mitchell Spradlin <mitch@spradlin.net>
  dpkg-source --before-build lines
 dpkg-buildpackage: host architecture amd64
@@ -14,10 +14,12 @@ dh clean --with=systemd
  dpkg-source -b lines
 dpkg-source: info: using options from lines/debian/source/options: --extend-diff-ignore=target|*.swp --tar-ignore=target --tar-ignore=*.swp --tar-ignore=.git
 dpkg-source: warning: no source format specified in debian/source/format, see dpkg-source(1)
-dpkg-source: warning: source directory 'lines' is not <sourcepackage>-<upstreamversion> 'lines-agent-0.1'
+dpkg-source: warning: Version number suggests Ubuntu changes, but Maintainer: does not have Ubuntu address
+dpkg-source: warning: Version number suggests Ubuntu changes, but there is no XSBC-Original-Maintainer field
+dpkg-source: warning: source directory 'lines' is not <sourcepackage>-<upstreamversion> 'lines-agent-0.1ubuntu1'
 dpkg-source: info: using source format '1.0'
-dpkg-source: info: building lines-agent in lines-agent_0.1.tar.gz
-dpkg-source: info: building lines-agent in lines-agent_0.1.dsc
+dpkg-source: info: building lines-agent in lines-agent_0.1ubuntu1.tar.gz
+dpkg-source: info: building lines-agent in lines-agent_0.1ubuntu1.dsc
  debian/rules build
 dh build --with=systemd
    dh_testdir
@@ -47,14 +49,14 @@ dh binary --with=systemd
 dpkg-gencontrol: warning: package lines-agent: unused substitution variable ${misc:Depends}
    dh_md5sums
    dh_builddeb
-dpkg-deb: building package 'lines-agent' in '../lines-agent_0.1_all.deb'.
- dpkg-genchanges  >../lines-agent_0.1_amd64.changes
+dpkg-deb: building package 'lines-agent' in '../lines-agent_0.1ubuntu1_all.deb'.
+ dpkg-genchanges  >../lines-agent_0.1ubuntu1_amd64.changes
 dpkg-genchanges: including full source code in upload
  dpkg-source --after-build lines
 dpkg-source: info: using options from lines/debian/source/options: --extend-diff-ignore=target|*.swp --tar-ignore=target --tar-ignore=*.swp --tar-ignore=.git
 dpkg-buildpackage: full upload; Debian-native package (full source is included)
 Now running lintian...
-E: lines-agent changes: bad-distribution-in-changes-file experimental
+E: lines-agent changes: bad-distribution-in-changes-file stable
 W: lines-agent source: debhelper-but-no-misc-depends lines-agent
 W: lines-agent source: package-needs-versioned-debhelper-build-depends 10
 W: lines-agent source: no-debian-copyright
@@ -63,7 +65,6 @@ E: lines-agent: arch-independent-package-contains-binary-or-object usr/bin/lines
 E: lines-agent: unstripped-binary-or-object usr/bin/lines-agent
 E: lines-agent: embedded-library usr/bin/lines-agent: libyaml
 W: lines-agent: missing-depends-line
-W: lines-agent: improbable-bug-number-in-closes 00001
 E: lines-agent: no-copyright-file
 W: lines-agent: extended-description-line-too-long
 W: lines-agent: init.d-script-not-marked-as-conffile etc/init.d/lines-agent
@@ -71,8 +72,8 @@ E: lines-agent: init.d-script-not-included-in-package etc/init.d/lines-agent
 W: lines-agent: binary-without-manpage usr/bin/lines-agent
 Finished running lintian.
 Now signing changes and any dsc files...
- signfile lines-agent_0.1.dsc Mitchell Spradlin <mitch@spradlin.net>
+ signfile lines-agent_0.1ubuntu1.dsc Mitchell Spradlin <mitch@spradlin.net>
 
- signfile lines-agent_0.1_amd64.changes Mitchell Spradlin <mitch@spradlin.net>
+ signfile lines-agent_0.1ubuntu1_amd64.changes Mitchell Spradlin <mitch@spradlin.net>
 
 Successfully signed dsc and changes files

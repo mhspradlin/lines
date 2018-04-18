@@ -1,0 +1,49 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Format: 1.8
+Date: Wed, 18 Apr 2018 08:20:45 -0700
+Source: lines-agent
+Binary: lines-agent
+Architecture: source all
+Version: 0.1ubuntu1
+Distribution: stable
+Urgency: medium
+Maintainer: Mitchell Spradlin <mitch@spradlin.net>
+Changed-By: Mitchell Spradlin <mitch@spradlin.net>
+Description:
+ lines-agent - lightweight monitoring agent
+Changes:
+ lines-agent (0.1ubuntu1) stable; urgency=medium
+ .
+   * Now emitting drive metrics with the drive name
+Checksums-Sha1:
+ 7c2978cda1fc3bdfd32f197515128006f6001da8 1429 lines-agent_0.1ubuntu1.dsc
+ ca411ef528a36c2304266fc57153751300412b6e 3260974 lines-agent_0.1ubuntu1.tar.gz
+ c9e9a77b41367aeee557a31be0329a7be4706e52 1786486 lines-agent_0.1ubuntu1_all.deb
+Checksums-Sha256:
+ fcccc181939f4c5fb8d0117376ed8b86e04e44fcf13a0d248102753e6729a8ac 1429 lines-agent_0.1ubuntu1.dsc
+ a4bc7e058613861ef768c269c79b930ea6d097e03f8bdd774aaba215a3e87f1d 3260974 lines-agent_0.1ubuntu1.tar.gz
+ bad5e1aa06cc6ab615dd14f2350ea69de3657f66aecf1b78eeff7eaaba1774a6 1786486 lines-agent_0.1ubuntu1_all.deb
+Files:
+ f393c836a0da96771991a77e4e5c04ff 1429 utils optional lines-agent_0.1ubuntu1.dsc
+ c2ff6b01d04864540eaae6031d13b508 3260974 utils optional lines-agent_0.1ubuntu1.tar.gz
+ ed051dac367fd432cf22311b5b77f8e8 1786486 utils optional lines-agent_0.1ubuntu1_all.deb
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iQIcBAEBAgAGBQJa12LzAAoJEOHl990YTUDWCBgP/08hm3nTkaOzGbBpWlHhkXU7
+3UQvPK4ozRLN4lJNCIsGmbQn8SfuZMX4N/LK+N+oQCKxaQ8svNfU1oxpuIw+rtTz
+5QdEnglLasnuWL1m7uPEhMaIU007oMpiEBZTM5WK8If6wuKat8HcrUfaLftzUpwM
+cqzb0S92LD2Jt8qMSlbGhM7JFohtfM0Fjr9tHKFRVj2TxS/Y8oL/oqgViv+ZlJBW
+mmreMQUKBxmV4n3IkcvRkxGJvkHjocyDo9VrjAA6hNU3mfx1LjCNuFTbfYhZmJS3
+0eWeeIGf/hZEilE86pw9blu2SAzwLxBvWXLb2r5gxGcMMHCI+7wZ/PPL2pW7M/Vi
+vJNIEej2D/3J0EhBtcW8L1pZPklJYVLV4LVBu2ep18IljZllOjF0oBYjNboBxYRM
+C5WAFRO14zRGbdqjcaRPdt2zJ34BJn8NfY2r2DaE5+5eOQ7kuKxkFnjkwqAoWqWE
+8l9E2pfuY4orqqSAk+30t2RdBW5/27XLml/bF0qd5PfLnUAYSBifDgwS9NTtpy7J
+E1Rbx1WyqzTz+/D+o8oNwghXYk9dhXUtLkABWKni2VHP5ATfSt/MZdowIEOrifxM
+9fRiQrwHHmZfzRjQlj8ww+xmYjScnIO/HHKP3pBWkDnBC53Uq+MXJFJCUAm+Wbor
+B2/Z9gZXFPhgliUJM5oD
+=8yzk
+-----END PGP SIGNATURE-----
