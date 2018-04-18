@@ -28,13 +28,11 @@ mod platform {
     use self::winapi::um::winnt::LPCWSTR;
     use std::ptr;
 
-    const FALSE: i32 = 0;
-    const FATAL_ERROR: &'static str = "Fatal error counting metric";
-    const METRICS_PREFIX: &'static str = "drive";
-    lazy_static! {
-        static ref TOTAL_BYTES: String = METRICS_PREFIX.to_string() + ".total_bytes";
-        static ref FREE_BYTES: String = METRICS_PREFIX.to_string() + ".free_bytes";
-    }
+    static FALSE: i32 = 0;
+    static FATAL_ERROR: &str = "Fatal error counting metric";
+    static METRICS_PREFIX: &str = "drive";
+    static TOTAL_BYTES: &str = "total_bytes";
+    static FREE_BYTES: &str = "free_bytes";
 
     impl Sensor for DiskSpaceSensor {
         fn sense(&mut self, statsd_client: &StatsdClient) {
@@ -56,12 +54,19 @@ mod platform {
                       total_accessible_drive_size_bytes / 1024 / 1024 / 1024);
                 info!("'{}' free size: {} GiB", self.directory_on_disk.to_string_lossy(),
                       total_free_drive_space_bytes / 1024 / 1024 / 1024);
-                statsd_client.count(&TOTAL_BYTES, super::value_or_max(total_accessible_drive_size_bytes))
+                let directory_name = self.directory_on_disk.to_string_lossy();
+                statsd_client.count(&create_drive_metric_name(&directory_name, TOTAL_BYTES),
+                                    super::value_or_max(total_accessible_drive_size_bytes))
                     .expect(FATAL_ERROR);
-                statsd_client.count(&FREE_BYTES, super::value_or_max(total_free_drive_space_bytes))
+                statsd_client.count(&create_drive_metric_name(&directory_name, FREE_BYTES),
+                                    super::value_or_max(total_free_drive_space_bytes))
                     .expect(FATAL_ERROR);
             }
         }
+    }
+
+    fn create_drive_metric_name(drive: &str, suffix: &str) -> String {
+        METRICS_PREFIX.to_string() + "." + drive + "." + suffix
     }
 }
 
@@ -81,10 +86,8 @@ mod platform {
     const FALSE: i32 = 0;
     const FATAL_ERROR: &'static str = "Fatal error counting metric";
     const METRICS_PREFIX: &'static str = "drive";
-    lazy_static! {
-        static ref TOTAL_BYTES: String = METRICS_PREFIX.to_string() + ".total_bytes";
-        static ref FREE_BYTES: String = METRICS_PREFIX.to_string() + ".free_bytes";
-    }
+    static TOTAL_BYTES: &str = "total_bytes";
+    static FREE_BYTES: &str = "free_bytes";
 
     impl Sensor for DiskSpaceSensor {
         fn sense(&mut self, statsd_client: &StatsdClient) {
@@ -100,15 +103,23 @@ mod platform {
                       total_accessible_drive_size_bytes / 1024 / 1024 / 1024);
                 info!("'{}' free size: {} GiB", self.directory_on_disk.to_string_lossy(),
                       total_free_drive_space_bytes / 1024 / 1024 / 1024);
-                statsd_client.count(&TOTAL_BYTES, super::value_or_max(total_accessible_drive_size_bytes))
+
+                let directory_name = self.directory_on_disk.to_string_lossy();
+                statsd_client.count(&create_drive_metric_name(&directory_name, TOTAL_BYTES),
+                                    super::value_or_max(total_accessible_drive_size_bytes))
                     .expect(FATAL_ERROR);
-                statsd_client.count(&FREE_BYTES, super::value_or_max(total_free_drive_space_bytes))
+                statsd_client.count(&create_drive_metric_name(&directory_name, FREE_BYTES),
+                                    super::value_or_max(total_free_drive_space_bytes))
                     .expect(FATAL_ERROR);
             } else {
                 error!("Error getting drive usage for drive '{}': {}",
                        self.directory_on_disk.to_string_lossy(), Error::last_os_error());
             }
         }
+    }
+
+    fn create_drive_metric_name(drive: &str, suffix: &str) -> String {
+        METRICS_PREFIX.to_string() + "." + drive + "." + suffix
     }
 }
 

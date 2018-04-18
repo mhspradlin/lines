@@ -1,5 +1,8 @@
-Push-Location (Join-Path $MyInvocation.MyCommand.Path \..\..\..\)
+Push-Location (Join-Path $MyInvocation.MyCommand.Path \..\..\)
 [Environment]::CurrentDirectory = $PWD
+
+# Make sure we've built the release version of the package
+cargo build --release
 
 $manifest = cargo read-manifest --manifest-path Cargo.toml | ConvertFrom-Json
 $version = $manifest.version.Split(".")
@@ -18,11 +21,13 @@ if (!(Get-ChildItem "target\nssm-$env:NSSM_VERSION").Exists) {
     $client = New-Object System.Net.WebClient
     try {
         $WebClient.DownloadFile("http://www.nssm.cc/ci/nssm-$env:NSSM_VERSION.zip", "target\nssm.zip")
-    } catch [System.Net.WebException] {
+    }
+    catch [System.Net.WebException] {
         # $_ is set to the ErrorRecord of the exception
         if ($_.Exception.InnerException) {
             Write-Host $_.Exception.InnerException.Message
-        } else {
+        }
+        else {
             Write-Host $_.Exception.Message
         }
     }
@@ -38,14 +43,14 @@ if (!(Get-ChildItem "target\nssm-$env:NSSM_VERSION").Exists) {
     # End copying
 }
 
-foreach($file in Get-ChildItem packaging\windows\*.wxs) {
+foreach ($file in Get-ChildItem packaging\windows\*.wxs) {
     $in = $file.Name
-    $out = $($file.Name.Replace(".wxs",".wixobj"))
+    $out = $($file.Name.Replace(".wxs", ".wixobj"))
     &"$($env:WIX)bin\candle.exe" -nologo -ext WixUtilExtension -out "target\$out" $file
     if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
-&"$($env:WIX)\bin\light.exe" -nologo -ext WixUtilExtension -pdbout "target\installer.pdb" -out "packaging\windows\installer.msi" $(Get-ChildItem target\*.wixobj)
+&"$($env:WIX)\bin\light.exe" -nologo -ext WixUtilExtension -pdbout "target\installer.pdb" -out "windows\installer.msi" $(Get-ChildItem target\*.wixobj)
 
 Pop-Location
 [Environment]::CurrentDirectory = $PWD
