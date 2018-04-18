@@ -1,0 +1,5 @@
+# Ignore .swp files and the target directory
+extend-diff-ignore = "target|*.swp"
+tar-ignore = target
+tar-ignore = *.swp
+tar-ignore = .git
