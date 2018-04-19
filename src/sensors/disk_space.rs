@@ -66,7 +66,7 @@ mod platform {
     }
 
     fn create_drive_metric_name(drive: &str, suffix: &str) -> String {
-        METRICS_PREFIX.to_string() + "." + drive + "." + suffix
+        METRICS_PREFIX.to_string() + "." + &drive.replace(":", "") + "." + suffix
     }
 }
 
@@ -119,7 +119,7 @@ mod platform {
     }
 
     fn create_drive_metric_name(drive: &str, suffix: &str) -> String {
-        METRICS_PREFIX.to_string() + "." + drive + "." + suffix
+        METRICS_PREFIX.to_string() + "." + &drive.replace(":", "") + "." + suffix
     }
 }
 

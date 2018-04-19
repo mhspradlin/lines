@@ -18,7 +18,6 @@ if (!(Get-ChildItem "target\nssm-$env:NSSM_VERSION").Exists) {
     # Download nssm.zip
     Write-Host Downloading NSSM ZIP
     $WebClient = New-Object System.Net.WebClient
-    $client = New-Object System.Net.WebClient
     try {
         $WebClient.DownloadFile("http://www.nssm.cc/ci/nssm-$env:NSSM_VERSION.zip", "target\nssm.zip")
     }
@@ -43,8 +42,7 @@ if (!(Get-ChildItem "target\nssm-$env:NSSM_VERSION").Exists) {
     # End copying
 }
 
-foreach ($file in Get-ChildItem packaging\windows\*.wxs) {
-    $in = $file.Name
+foreach ($file in Get-ChildItem windows\*.wxs) {
     $out = $($file.Name.Replace(".wxs", ".wixobj"))
     &"$($env:WIX)bin\candle.exe" -nologo -ext WixUtilExtension -out "target\$out" $file
     if ($LASTEXITCODE -ne 0) { exit 1 }
